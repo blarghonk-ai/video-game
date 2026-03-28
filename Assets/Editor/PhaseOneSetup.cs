@@ -12,22 +12,47 @@ using System.IO;
 [InitializeOnLoad]
 public static class PhaseOneSetup
 {
-    // Auto-trigger on first load (when Phase1_Sandbox.unity doesn't exist yet)
     static PhaseOneSetup()
     {
         string scenePath = Application.dataPath + "/Scenes/Phase1_Sandbox.unity";
         if (!File.Exists(scenePath))
         {
-            // delayCall ensures the Editor is fully ready before we build the scene
             EditorApplication.delayCall += AutoSetup;
+        }
+        else
+        {
+            // Scene exists — auto-fix pink materials once per session
+            // Double delayCall gives Unity two frames to fully load the scene first
+            EditorApplication.delayCall += () =>
+                EditorApplication.delayCall += AutoFixMaterials;
         }
     }
 
     static void AutoSetup()
     {
-        EditorApplication.delayCall -= AutoSetup;
         Debug.Log("Crash & Build: Auto-building Phase 1 scene...");
         BuildScene();
+    }
+
+    static void AutoFixMaterials()
+    {
+        // Only fix if there are actually pink (non-URP) materials in the scene
+        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        bool needsFix = false;
+        foreach (var r in renderers)
+        {
+            if (r.sharedMaterial != null &&
+                !r.sharedMaterial.shader.name.Contains("Universal Render Pipeline"))
+            {
+                needsFix = true;
+                break;
+            }
+        }
+        if (needsFix)
+        {
+            Debug.Log("Crash & Build: Auto-fixing pink materials...");
+            FixPinkMaterials();
+        }
     }
 
     [MenuItem("Crash & Build/Setup Phase 1 Scene")]
