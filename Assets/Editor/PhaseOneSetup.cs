@@ -37,7 +37,7 @@ public static class PhaseOneSetup
     static void AutoFixMaterials()
     {
         // Only fix if there are actually pink (non-URP) materials in the scene
-        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include);
         bool needsFix = false;
         foreach (var r in renderers)
         {
@@ -356,7 +356,7 @@ public static class PhaseOneSetup
     [MenuItem("Crash & Build/Fix Pink Materials")]
     static void FixPinkMaterials()
     {
-        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include);
         int fixed_count = 0;
 
         foreach (var rend in renderers)
