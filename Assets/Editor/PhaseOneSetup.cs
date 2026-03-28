@@ -296,14 +296,65 @@ public static class PhaseOneSetup
     {
         var rend = go.GetComponent<Renderer>();
         if (rend == null) return;
+        rend.sharedMaterial = MakeURPMaterial(color);
+    }
 
-        // Try URP Lit shader first, fall back to Standard
-        var shader = Shader.Find("Universal Render Pipeline/Lit")
-                  ?? Shader.Find("Standard");
-        if (shader == null) return;
+    static Material MakeURPMaterial(Color color)
+    {
+        // Try every known URP shader name (Unity 6 uses "Universal Render Pipeline/Lit")
+        string[] urpShaders = {
+            "Universal Render Pipeline/Lit",
+            "Universal Render Pipeline/Simple Lit",
+            "Universal Render Pipeline/Unlit"
+        };
+        Shader shader = null;
+        foreach (var name in urpShaders)
+        {
+            shader = Shader.Find(name);
+            if (shader != null) break;
+        }
+        // Final fallback — Standard shader (works without URP, but shows pink with URP active)
+        shader = shader ?? Shader.Find("Standard");
+        if (shader == null) return null;
 
         var mat = new Material(shader);
         mat.color = color;
-        rend.sharedMaterial = mat;
+        // URP uses _BaseColor for the main color property
+        if (mat.HasProperty("_BaseColor"))
+            mat.SetColor("_BaseColor", color);
+        return mat;
+    }
+
+    // ── Fix Materials menu item ───────────────────────────────────
+    // Run this if the scene looks pink/magenta (URP shader wasn't ready on first build)
+
+    [MenuItem("Crash & Build/Fix Pink Materials")]
+    static void FixPinkMaterials()
+    {
+        var renderers = Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None);
+        int fixed_count = 0;
+
+        foreach (var rend in renderers)
+        {
+            // Skip anything that already has a proper URP material
+            if (rend.sharedMaterial == null) continue;
+            if (rend.sharedMaterial.shader.name.Contains("Universal Render Pipeline")) continue;
+
+            // Re-read the color from the existing material and rebuild with URP shader
+            Color col = rend.sharedMaterial.HasProperty("_Color")
+                ? rend.sharedMaterial.GetColor("_Color")
+                : Color.white;
+
+            var newMat = MakeURPMaterial(col);
+            if (newMat != null)
+            {
+                rend.sharedMaterial = newMat;
+                fixed_count++;
+            }
+        }
+
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        EditorSceneManager.SaveOpenScenes();
+        Debug.Log($"Crash & Build: Fixed {fixed_count} pink materials. Scene saved.");
     }
 }
