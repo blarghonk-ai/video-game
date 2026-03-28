@@ -7,15 +7,29 @@ using System.IO;
 /// Crash & Build — Phase 1 scene builder.
 /// Menu: Crash & Build > Setup Phase 1 Scene
 ///
-/// Builds a complete playable sandbox in one click:
-///   - Large green ground plane
-///   - Red crash wall 35m ahead
-///   - Orange launch ramp in between
-///   - Fully wired car with Wheel Colliders, CarController, CarPartBreaker, CarReset
-///   - Chase camera with SimpleCameraFollow
+/// Also auto-runs once on load if the scene doesn't exist yet.
 /// </summary>
+[InitializeOnLoad]
 public static class PhaseOneSetup
 {
+    // Auto-trigger on first load (when Phase1_Sandbox.unity doesn't exist yet)
+    static PhaseOneSetup()
+    {
+        string scenePath = Application.dataPath + "/Scenes/Phase1_Sandbox.unity";
+        if (!File.Exists(scenePath))
+        {
+            // delayCall ensures the Editor is fully ready before we build the scene
+            EditorApplication.delayCall += AutoSetup;
+        }
+    }
+
+    static void AutoSetup()
+    {
+        EditorApplication.delayCall -= AutoSetup;
+        Debug.Log("Crash & Build: Auto-building Phase 1 scene...");
+        BuildScene();
+    }
+
     [MenuItem("Crash & Build/Setup Phase 1 Scene")]
     static void SetupPhase1Scene()
     {
@@ -25,6 +39,11 @@ public static class PhaseOneSetup
             "Yes, Build It!", "Cancel"))
             return;
 
+        BuildScene();
+    }
+
+    static void BuildScene()
+    {
         // ── Fresh scene ──────────────────────────────────────────
         var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
